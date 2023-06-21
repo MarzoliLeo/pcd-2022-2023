@@ -1,17 +1,20 @@
 package pcd.ass03.example;
 
 import java.awt.*;
+import java.awt.event.*;
 import java.awt.image.BufferedImage;
 import java.util.List;
 import javax.swing.*;
 import com.rabbitmq.client.*;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
-import java.awt.event.MouseMotionListener;
+
 import java.io.IOException;
 import java.util.ArrayList;
-
 import java.util.concurrent.TimeoutException;
+
+import com.rabbitmq.client.AMQP;
+import com.rabbitmq.client.DefaultConsumer;
+import com.rabbitmq.client.Envelope;
+
 
 
 public class PixelGridView extends JFrame {
@@ -21,14 +24,17 @@ public class PixelGridView extends JFrame {
 	private final List<PixelGridEventListener> pixelListeners;
 	private final List<MouseMovedListener> movedListener;
 	private final List<ColorChangeListener> colorChangeListeners;
+
 	private final ConnectionFactory factory;
 	private Connection connection;
 	private Channel channel;
+	private final String exchangeName;
 
-	public PixelGridView(PixelGrid grid, BrushManager brushManager, int w, int h) {
+	public PixelGridView(PixelGrid grid, BrushManager brushManager, int w, int h, String exchangeName) {
 		this.grid = grid;
 		this.w = w;
 		this.h = h;
+		this.exchangeName = exchangeName;
 		pixelListeners = new ArrayList<>();
 		movedListener = new ArrayList<>();
 		colorChangeListeners = new ArrayList<>();
@@ -59,6 +65,14 @@ public class PixelGridView extends JFrame {
 		} catch (IOException | TimeoutException e) {
 			e.printStackTrace();
 		}
+
+		// Add a window listener to handle client disconnection
+		addWindowListener(new WindowAdapter() {
+			@Override
+			public void windowClosing(WindowEvent e) {
+				System.out.println("A client has closed.");
+			}
+		});
 	}
 
 	public void refresh() {
@@ -142,4 +156,18 @@ public class PixelGridView extends JFrame {
 			}
 		};
 	}
+
+	public void closeConnection() {
+		try {
+			channel.close();
+			connection.close();
+			// Publish a message to notify other clients about the disconnection
+			String message = "disconnect";
+			channel.basicPublish(exchangeName, "", null, message.getBytes());
+		} catch (IOException | TimeoutException e) {
+			e.printStackTrace();
+		}
+	}
+
+
 }

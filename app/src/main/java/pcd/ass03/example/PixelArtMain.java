@@ -1,10 +1,17 @@
 package pcd.ass03.example;
 
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.util.Random;
 import com.rabbitmq.client.*;
 
 import java.io.IOException;
 import java.util.concurrent.TimeoutException;
+
+import com.rabbitmq.client.AMQP;
+import com.rabbitmq.client.DefaultConsumer;
+import com.rabbitmq.client.Envelope;
+
 
 
 public class PixelArtMain {
@@ -19,11 +26,14 @@ public class PixelArtMain {
         Connection connection = factory.newConnection();
         Channel channel = connection.createChannel();
 
+
         String exchangeName = "pixelart_exchange";
         channel.exchangeDeclare(exchangeName, BuiltinExchangeType.FANOUT);
 
+        //Queue for connection messages.
         String queueName = channel.queueDeclare().getQueue();
         channel.queueBind(queueName, exchangeName, "");
+
 
         var brushManager = new BrushManager();
         var localBrush = new BrushManager.Brush(0, 0, randomColor());
@@ -37,7 +47,7 @@ public class PixelArtMain {
             grid.set(rand.nextInt(40), rand.nextInt(40), randomColor());
         }
 
-        PixelGridView view = new PixelGridView(grid, brushManager, 800, 800);
+        PixelGridView view = new PixelGridView(grid, brushManager, 800, 800, exchangeName);
         view.addMouseMovedListener((x, y) -> {
             localBrush.updatePosition(x, y);
             view.refresh();
@@ -53,6 +63,33 @@ public class PixelArtMain {
         view.display();
 
         channel.basicConsume(queueName, true, createConsumer(view, grid, brushManager));
+
+        // Add a separate queue for popup messages.
+        String popupQueueName = channel.queueDeclare().getQueue();
+        channel.queueBind(popupQueueName, exchangeName, "popup");
+
+
+        // Add a separate queue for disconnection messages
+        String disconnectQueueName = channel.queueDeclare().getQueue();
+        channel.queueBind(disconnectQueueName, exchangeName, "");
+
+        // Consume messages from the disconnect queue
+        channel.basicConsume(disconnectQueueName, true, createDisconnectConsumer(view, grid, brushManager));
+
+        // Add a window listener to handle client disconnection
+        view.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                System.out.println(" ----------------- A client has closed. !!! -----------------");
+                String message = "Client disconnected";
+                try {
+                    channel.basicPublish(exchangeName, "", null, message.getBytes());
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
+                }
+            }
+        });
+
     }
 
     private static Consumer createConsumer(PixelGridView view, PixelGrid grid, BrushManager brushManager) {
@@ -71,4 +108,18 @@ public class PixelArtMain {
             }
         };
     }
+
+    private static Consumer createDisconnectConsumer(PixelGridView view, PixelGrid grid, BrushManager brushManager) {
+        return new DefaultConsumer(view.getChannel()) {
+            @Override
+            public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) throws IOException {
+                String message = new String(body, "UTF-8");
+                System.out.println(message);
+            }
+        };
+    }
+
+
+
+
 }
