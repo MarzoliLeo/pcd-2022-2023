@@ -24,7 +24,6 @@ public class PixelGridView extends JFrame {
 	private final List<PixelGridEventListener> pixelListeners;
 	private final List<MouseMovedListener> movedListener;
 	private final List<ColorChangeListener> colorChangeListeners;
-	private final List<WindowOpenedListener> windowOpenedListeners;
 
 	public PixelGridView(PixelGrid grid, BrushManager brushManager, int w, int h) {
 		this.grid = grid;
@@ -33,7 +32,6 @@ public class PixelGridView extends JFrame {
 		pixelListeners = new ArrayList<>();
 		movedListener = new ArrayList<>();
 		colorChangeListeners = new ArrayList<>();
-		windowOpenedListeners = new ArrayList<>();
 		setTitle(".:: PixelArt ::.");
 		setResizable(false);
 		panel = new VisualiserPanel(grid, brushManager, w, h);
@@ -78,7 +76,6 @@ public class PixelGridView extends JFrame {
 		colorChangeListeners.add(l);
 	}
 
-	public void addWindowOpenedListener(WindowOpenedListener l) { windowOpenedListeners.add(l); }
 
 	private void hideCursor() {
 		var cursorImage = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
@@ -130,7 +127,13 @@ public class PixelGridView extends JFrame {
 
 			@Override
 			public void mouseMoved(MouseEvent e) {
-				movedListener.forEach(l -> l.mouseMoved(e.getX(), e.getY()));
+				movedListener.forEach(l -> {
+					try {
+						l.mouseMoved(e.getX(), e.getY());
+					} catch (IOException ex) {
+						throw new RuntimeException(ex);
+					}
+				});
 			}
 		};
 	}

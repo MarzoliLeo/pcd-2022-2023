@@ -40,21 +40,24 @@ public class PixelArtMain {
 
         var brushManager = new BrushManager();
         var localBrush = new BrushManager.Brush(0, 0, randomColor());
-        var fooBrush = new BrushManager.Brush(0, 0, randomColor());
         brushManager.addBrush(localBrush);
-        brushManager.addBrush(fooBrush);
 
         PixelGrid grid = new PixelGrid(40, 40);
-        /*Random rand = new Random();
-        for (int i = 0; i < 10; i++) {
-            grid.set(rand.nextInt(40), rand.nextInt(40), randomColor());
-        }*/
         PixelGridView view = new PixelGridView(grid, brushManager, 800, 800);
 
         // set the position of the brush to the mouse position.
         view.addMouseMovedListener((x, y) -> {
             localBrush.updatePosition(x, y);
             view.refresh();
+
+            // Convert coordinates to be relative to the PixelGrid
+            int dx = view.getWidth() / grid.getNumColumns();
+            int dy = view.getHeight() / grid.getNumRows();
+            int col = x / dx;
+            int row = y / dy;
+
+            String message = col + "," + row;
+            channel.basicPublish(exchangeName, "", null, message.getBytes());
         });
 
         // set the color of the pixel at the mouse position.
@@ -92,29 +95,12 @@ public class PixelArtMain {
             }
         });
 
-
-        //TODO IN QUESTO MOMENTO QUESTO NON STA FUNZIONANDO, NON CI ENTRA PROPRIO. (strano perchè sotto l'ho fatto in una maniera differente usando lo stesso
-        //TODO metodo e funziona), hai creato una interfaccia WindowOpenedListener e aggiunto un metodo in View che aggiunge un listener di questo tipo.
-        //ivoke the "windowOpened" method of the listeners.
-        /*view.addWindowOpenedListener(() -> {
-            System.out.println(" ----------------- A client has connected. !!! -----------------");
-            String message = "Client connected";
-            channel.basicPublish(exchangeName, "", null, message.getBytes());
-        });*/
-
         // Note that these methods invokation execute before the "addMouseMovedListener" and the "addPixelGridEventListener" methods.
         // Because they are asynchronous events.
         view.addColorChangedListener(localBrush::setColor);
         view.display();
         // Creation of a consumer for the queue.
         channel.basicConsume(queueName, true, createConsumer(view, grid, exchangeName, channel));
-
-/*        // Add a separate queue for disconnection messages
-        String disconnectQueueName = channel.queueDeclare().getQueue();
-        channel.queueBind(disconnectQueueName, exchangeName, "");
-
-        // Consume messages from the disconnect queue
-        channel.basicConsume(disconnectQueueName, true, createDisconnectConsumer(view, grid, brushManager, channel));*/
 
     }
 
@@ -138,6 +124,13 @@ public class PixelArtMain {
                     view.refresh();
                 } else if (parts.length == 1 && parts[0].equals("Client disconnected")) {
                     System.out.println(message);
+                } else if (parts.length == 2) {
+                    int x = Integer.parseInt(parts[0]);
+                    int y = Integer.parseInt(parts[1]);
+                    System.out.println(message);
+                    System.out.println("Sto lavorando sulla cella" + x + "," + y);
+                    //localBrush.updatePosition(x, y);
+                    //view.refresh();
                 } else {
                     System.out.println(message + " is unknown and do nothing in the program.");
                 }
@@ -159,16 +152,6 @@ public class PixelArtMain {
 
     }
 
-    /*
-    private static void sendGridInformation(PixelGridView view, PixelGrid grid, Channel channel, String exchangeName) throws IOException {
-        // Obtain the information from the grid.
-        List<String> gridInformation = getGridInformation(grid);
-        // Create unique string from the list of information.
-        String message = String.join(";", gridInformation);
-        // Send the message to the clients.
-        channel.basicPublish(exchangeName, "", null, message.getBytes());
-    }*/
-
     private static List<String> getGridInformation(PixelGrid grid) {
         List<String> gridInformation = new ArrayList<>();
         int numRows = grid.getNumRows();
@@ -185,20 +168,6 @@ public class PixelArtMain {
         }
         return gridInformation;
     }
-
-
-
-/*    private static Consumer createDisconnectConsumer(PixelGridView view, PixelGrid grid, BrushManager brushManager, Channel channel) {
-        return new DefaultConsumer(channel) {
-            @Override
-            public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) throws IOException {
-                String message = new String(body, "UTF-8");
-                System.out.println(message);
-            }
-        };
-    }*/
-
-
 
 
 }
