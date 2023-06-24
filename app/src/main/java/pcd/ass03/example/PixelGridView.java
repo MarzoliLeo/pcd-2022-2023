@@ -24,20 +24,16 @@ public class PixelGridView extends JFrame {
 	private final List<PixelGridEventListener> pixelListeners;
 	private final List<MouseMovedListener> movedListener;
 	private final List<ColorChangeListener> colorChangeListeners;
+	private final List<WindowOpenedListener> windowOpenedListeners;
 
-	private final ConnectionFactory factory;
-	private Connection connection;
-	private Channel channel;
-	private final String exchangeName;
-
-	public PixelGridView(PixelGrid grid, BrushManager brushManager, int w, int h, String exchangeName) {
+	public PixelGridView(PixelGrid grid, BrushManager brushManager, int w, int h) {
 		this.grid = grid;
 		this.w = w;
 		this.h = h;
-		this.exchangeName = exchangeName;
 		pixelListeners = new ArrayList<>();
 		movedListener = new ArrayList<>();
 		colorChangeListeners = new ArrayList<>();
+		windowOpenedListeners = new ArrayList<>();
 		setTitle(".:: PixelArt ::.");
 		setResizable(false);
 		panel = new VisualiserPanel(grid, brushManager, w, h);
@@ -56,23 +52,6 @@ public class PixelGridView extends JFrame {
 		this.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 		hideCursor();
 
-		factory = new ConnectionFactory();
-		factory.setHost("localhost");
-
-		try {
-			connection = factory.newConnection();
-			channel = connection.createChannel();
-		} catch (IOException | TimeoutException e) {
-			e.printStackTrace();
-		}
-
-		// Add a window listener to handle client disconnection
-		addWindowListener(new WindowAdapter() {
-			@Override
-			public void windowClosing(WindowEvent e) {
-				System.out.println("A client has closed.");
-			}
-		});
 	}
 
 	public void refresh() {
@@ -86,6 +65,7 @@ public class PixelGridView extends JFrame {
 		});
 	}
 
+	// Event listeners.
 	public void addPixelGridEventListener(PixelGridEventListener l) {
 		pixelListeners.add(l);
 	}
@@ -98,9 +78,7 @@ public class PixelGridView extends JFrame {
 		colorChangeListeners.add(l);
 	}
 
-	public Channel getChannel() {
-		return channel;
-	}
+	public void addWindowOpenedListener(WindowOpenedListener l) { windowOpenedListeners.add(l); }
 
 	private void hideCursor() {
 		var cursorImage = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
@@ -156,18 +134,5 @@ public class PixelGridView extends JFrame {
 			}
 		};
 	}
-
-	public void closeConnection() {
-		try {
-			channel.close();
-			connection.close();
-			// Publish a message to notify other clients about the disconnection
-			String message = "disconnect";
-			channel.basicPublish(exchangeName, "", null, message.getBytes());
-		} catch (IOException | TimeoutException e) {
-			e.printStackTrace();
-		}
-	}
-
 
 }
