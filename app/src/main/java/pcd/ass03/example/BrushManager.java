@@ -8,6 +8,7 @@ public class BrushManager {
     private static final int BRUSH_SIZE = 10;
     private static final int STROKE_SIZE = 2;
     private List<Brush> brushes = new java.util.ArrayList<>();
+    private List<String> brushesId = new java.util.ArrayList<>();
 
     void draw(final Graphics2D g) {
         brushes.forEach(brush -> {
@@ -29,11 +30,17 @@ public class BrushManager {
         brushes.remove(brush);
     }
 
+    void addBrushId(final String id){
+        brushesId.add(id);
+    }
+
     public static class Brush {
         private int x, y;
         private int color;
+        private String clientId;
 
-        public Brush(final int x, final int y, final int color) {
+        public Brush(final String clientId, final int x, final int y, final int color) {
+            this.clientId = clientId;
             this.x = x;
             this.y = y;
             this.color = color;
@@ -55,6 +62,9 @@ public class BrushManager {
         }
         public void setColor(int color){
             this.color = color;
+        }
+        public String getClientId() {
+            return clientId;
         }
     }
 }

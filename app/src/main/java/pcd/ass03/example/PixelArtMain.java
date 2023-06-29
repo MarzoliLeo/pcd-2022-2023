@@ -8,7 +8,6 @@ import java.util.*;
 import com.rabbitmq.client.*;
 
 import java.io.IOException;
-import java.util.concurrent.Exchanger;
 import java.util.concurrent.TimeoutException;
 
 import com.rabbitmq.client.AMQP;
@@ -38,9 +37,11 @@ public class PixelArtMain {
         String queueName = channel.queueDeclare().getQueue();
         channel.queueBind(queueName, exchangeName, "");
 
-        var brushManager = new BrushManager();
-        var localBrush = new BrushManager.Brush(0, 0, randomColor());
+        BrushManager brushManager = new BrushManager(); // Dichiarazione dell'istanza di brushManager
+        String id = UUID.randomUUID().toString();
+        var localBrush = new BrushManager.Brush(id,0, 0, randomColor());
         brushManager.addBrush(localBrush);
+        brushManager.addBrushId(id);
 
         PixelGrid grid = new PixelGrid(40, 40);
         PixelGridView view = new PixelGridView(grid, brushManager, 800, 800);
@@ -56,9 +57,13 @@ public class PixelArtMain {
             int col = x / dx;
             int row = y / dy;
 
-            String message = col + "," + row;
-            channel.basicPublish(exchangeName, "", null, message.getBytes());
+            String message = col + "," + row + "," + localBrush.getColor();
+            AMQP.BasicProperties properties = new AMQP.BasicProperties.Builder()
+                    .messageId(id)  // set the id of who sent the message.
+                    .build();
+            channel.basicPublish(exchangeName, "", properties , message.getBytes());
         });
+
 
         // set the color of the pixel at the mouse position.
         view.addPixelGridEventListener((x, y) -> {
@@ -105,32 +110,46 @@ public class PixelArtMain {
     }
 
     private static Consumer createConsumer(PixelGridView view, PixelGrid grid, String exchangeName, Channel channel) {
+        Map<String, BrushManager.Brush> brushMap = new HashMap<>();
+
         return new DefaultConsumer(channel) {
             @Override
             public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) throws IOException {
                 String message = new String(body, "UTF-8");
                 String[] parts = message.split(",");
+
                 if (parts.length == 3) {
                     int x = Integer.parseInt(parts[0]);
                     int y = Integer.parseInt(parts[1]);
                     int color = Integer.parseInt(parts[2]);
-                    // Update the other client grids with the colors painted.
+
                     grid.set(x, y, color);
-                    System.out.println(message);
                     view.refresh();
-                } else if (parts.length == 1 && parts[0].equals("Client connected")) {
+
+                    String clientId = properties.getMessageId();
+                    BrushManager.Brush brush = brushMap.get(clientId);
+                    if (brush != null) {
+                        brush.updatePosition(x, y);
+                    } else {
+                        brush = new BrushManager.Brush(clientId, x, y, color);
+                        brushMap.put(clientId, brush);
+                    }
+
+                    System.out.println(message);
+                    System.out.println("Il client " + clientId + " si trova in posizione " + x + "," + y);
+                }  else if (parts.length == 1 && parts[0].equals("Client connected")) {
+                    String clientId = properties.getMessageId();
                     System.out.println(message);
                     sendGridInformation(view, grid, channel, exchangeName);
                     view.refresh();
                 } else if (parts.length == 1 && parts[0].equals("Client disconnected")) {
                     System.out.println(message);
+
                 } else if (parts.length == 2) {
                     int x = Integer.parseInt(parts[0]);
                     int y = Integer.parseInt(parts[1]);
                     System.out.println(message);
-                    System.out.println("Sto lavorando sulla cella" + x + "," + y);
-                    //localBrush.updatePosition(x, y);
-                    //view.refresh();
+                    System.out.println("Sto lavorando sulla cella " + x + "," + y);
                 } else {
                     System.out.println(message + " is unknown and do nothing in the program.");
                 }
@@ -138,9 +157,10 @@ public class PixelArtMain {
         };
     }
 
+
     private static void sendGridInformation(PixelGridView view, PixelGrid grid, Channel channel, String exchangeName) throws IOException {
         List<String> gridInformation = getGridInformation(grid);
-        for(String s : gridInformation) {
+        for (String s : gridInformation) {
             String[] parts = s.split(",");
             int x = Integer.parseInt(parts[0]);
             int y = Integer.parseInt(parts[1]);
@@ -149,8 +169,8 @@ public class PixelArtMain {
             String message = x + "," + y + "," + color;
             channel.basicPublish(exchangeName, "", null, message.getBytes());
         }
-
     }
+
 
     private static List<String> getGridInformation(PixelGrid grid) {
         List<String> gridInformation = new ArrayList<>();
@@ -168,6 +188,4 @@ public class PixelArtMain {
         }
         return gridInformation;
     }
-
-
 }
