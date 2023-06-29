@@ -57,7 +57,7 @@ public class PixelArtMain {
             int col = x / dx;
             int row = y / dy;
 
-            String message = col + "," + row + "," + localBrush.getColor();
+            String message = col + "," + row + "," + localBrush.getColor() + "," + "Cursor Update";
             AMQP.BasicProperties properties = new AMQP.BasicProperties.Builder()
                     .messageId(id)  // set the id of who sent the message.
                     .build();
@@ -126,17 +126,8 @@ public class PixelArtMain {
                     grid.set(x, y, color);
                     view.refresh();
 
-                    String clientId = properties.getMessageId();
-                    BrushManager.Brush brush = brushMap.get(clientId);
-                    if (brush != null) {
-                        brush.updatePosition(x, y);
-                    } else {
-                        brush = new BrushManager.Brush(clientId, x, y, color);
-                        brushMap.put(clientId, brush);
-                    }
+                    System.out.println("Ho colorato la cella: " + message);
 
-                    System.out.println(message);
-                    System.out.println("Il client " + clientId + " si trova in posizione " + x + "," + y);
                 }  else if (parts.length == 1 && parts[0].equals("Client connected")) {
                     String clientId = properties.getMessageId();
                     System.out.println(message);
@@ -145,11 +136,21 @@ public class PixelArtMain {
                 } else if (parts.length == 1 && parts[0].equals("Client disconnected")) {
                     System.out.println(message);
 
-                } else if (parts.length == 2) {
+                } else if (parts.length == 4 && parts[3].equals("Cursor Update")) {
                     int x = Integer.parseInt(parts[0]);
                     int y = Integer.parseInt(parts[1]);
-                    System.out.println(message);
-                    System.out.println("Sto lavorando sulla cella " + x + "," + y);
+
+                    String clientId = properties.getMessageId();
+                    BrushManager.Brush brush = brushMap.get(clientId);
+                    if (brush != null) {
+                        brush.updatePosition(x, y);
+                    } else {
+                        brush = new BrushManager.Brush(clientId, x, y, randomColor());
+                        brushMap.put(clientId, brush);
+                    }
+                    System.out.println(" Il messaggio è: " + message);
+                    System.out.println("Il client " + clientId + " si trova in posizione " + x + "," + y);
+                    //System.out.println("Sto lavorando sulla cella " + x + "," + y);
                 } else {
                     System.out.println(message + " is unknown and do nothing in the program.");
                 }
