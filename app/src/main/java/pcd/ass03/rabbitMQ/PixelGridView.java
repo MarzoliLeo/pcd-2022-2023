@@ -1,20 +1,14 @@
-package pcd.ass03.example;
+package pcd.ass03.rabbitMQ;
 
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
 import java.util.List;
 import javax.swing.*;
-import com.rabbitmq.client.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.concurrent.TimeoutException;
-
-import com.rabbitmq.client.AMQP;
-import com.rabbitmq.client.DefaultConsumer;
-import com.rabbitmq.client.Envelope;
-
 
 
 public class PixelGridView extends JFrame {
@@ -41,7 +35,10 @@ public class PixelGridView extends JFrame {
 		colorChangeButton.addActionListener(e -> {
 			var color = JColorChooser.showDialog(this, "Choose a color", Color.BLACK);
 			if (color != null) {
-				colorChangeListeners.forEach(l -> l.colorChanged(color.getRGB()));
+				colorChangeListeners.forEach(l -> {
+						l.colorChanged(color.getRGB());
+
+				});
 			}
 		});
 		add(panel, BorderLayout.CENTER);

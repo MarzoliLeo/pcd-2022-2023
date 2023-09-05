@@ -1,4 +1,4 @@
-package pcd.ass03.example;
+package pcd.ass03.rabbitMQ;
 
 
 import java.awt.*;
