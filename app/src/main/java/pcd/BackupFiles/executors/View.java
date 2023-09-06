@@ -1,6 +1,6 @@
 package pcd.BackupFiles.executors;
 
-import pcd.Assignment3Marzoli.Histogram;
+import pcd.ex1.Histogram;
 import pcd.BackupFiles.Model;
 
 import javax.swing.*;
