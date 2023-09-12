@@ -142,11 +142,10 @@ public class PixelGridView extends JFrame {
             public void mouseMoved(MouseEvent e) {
                 movedListener.forEach(l -> {
                     try {
-                        System.out.println("Mouse moved");
                         l.mouseMoved(e.getX(), e.getY());
-                        System.out.println("Mouse moved dopo l.mouseMoved");
                         brushManagerService.mouseMoved(e.getX(), e.getY());
-                        System.out.println("Mouse moved dopo brushManagerService.mouseMoved");
+                        //System.out.println("Mouse moved: e.getX() = " + e.getX() + ", e.getY() = " + e.getY() + "");
+
                     } catch (IOException ex) {
                         throw new RuntimeException(ex);
                     }

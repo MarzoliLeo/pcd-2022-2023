@@ -58,6 +58,7 @@ public class VisualiserPanel extends JPanel {
                     }
                 }
             }
+
             this.draw(g2);
         } catch (RemoteException ex) {
             throw new RuntimeException(ex);

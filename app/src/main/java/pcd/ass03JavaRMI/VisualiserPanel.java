@@ -2,11 +2,13 @@ package pcd.ass03JavaRMI;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.geom.Ellipse2D;
 import java.rmi.RemoteException;
 
 
 
 public class VisualiserPanel extends JPanel {
+    private static final int BRUSH_SIZE = 10;
     private static final int STROKE_SIZE = 1;
     private final PixelGridService gridService;
     private final BrushManagerService brushManagerService;
@@ -56,10 +58,32 @@ public class VisualiserPanel extends JPanel {
                 }
             }
 
-            brushManagerService.draw(g2);
+            this.draw(g2);
 
         } catch (RemoteException e) {
             throw new RuntimeException(e);
         }
+
+    }
+
+    public void draw(final Graphics2D g) throws RemoteException {
+        brushManagerService.getBrushes().forEach(brush -> {
+            try {
+                g.setColor(new Color(brush.getColor()));
+            } catch (RemoteException e) {
+                throw new RuntimeException(e);
+            }
+            Ellipse2D.Double circle = null;
+            try {
+                circle = new Ellipse2D.Double(brush.getX() - BRUSH_SIZE / 2.0, brush.getY() - BRUSH_SIZE / 2.0, BRUSH_SIZE, BRUSH_SIZE);
+            } catch (RemoteException e) {
+                throw new RuntimeException(e);
+            }
+            // draw the polygon
+            g.fill(circle);
+            g.setStroke(new BasicStroke(STROKE_SIZE));
+            g.setColor(Color.BLACK);
+            g.draw(circle);
+        });
     }
 }

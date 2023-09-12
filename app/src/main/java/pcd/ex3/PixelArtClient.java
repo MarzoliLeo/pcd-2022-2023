@@ -35,7 +35,7 @@ public class PixelArtClient {
 
         view.addMouseMovedListener((x, y) -> {
             brushManager.updateBrushPosition(clientID, x, y);
-            view.refresh();
+            //view.refresh();
         });
 
         view.addPixelGridEventListener((x, y) -> {

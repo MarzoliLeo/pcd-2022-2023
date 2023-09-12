@@ -1,5 +1,7 @@
 package pcd.ass03JavaRMI;
 
+import pcd.ex3.view.services.BrushService;
+
 import java.awt.*;
 import java.awt.geom.Ellipse2D;
 import java.io.IOException;
@@ -11,8 +13,6 @@ import java.util.List;
 
 
 public class BrushManager extends UnicastRemoteObject implements BrushManagerService {
-    private static final int BRUSH_SIZE = 10;
-    private static final int STROKE_SIZE = 2;
     private List<Brush> brushes = new ArrayList<>();
     private List<String> brushesId = new ArrayList<>();
 
@@ -22,25 +22,8 @@ public class BrushManager extends UnicastRemoteObject implements BrushManagerSer
     }
 
     @Override
-    public void draw(final Graphics2D g) {
-        brushes.forEach(brush -> {
-            try {
-                g.setColor(new Color(brush.getColor()));
-            } catch (RemoteException e) {
-                throw new RuntimeException(e);
-            }
-            Ellipse2D.Double circle = null;
-            try {
-                circle = new Ellipse2D.Double(brush.getX() - BRUSH_SIZE / 2.0, brush.getY() - BRUSH_SIZE / 2.0, BRUSH_SIZE, BRUSH_SIZE);
-            } catch (RemoteException e) {
-                throw new RuntimeException(e);
-            }
-            // draw the polygon
-            g.fill(circle);
-            g.setStroke(new BasicStroke(STROKE_SIZE));
-            g.setColor(Color.BLACK);
-            g.draw(circle);
-        });
+    public List<Brush>getBrushes() {
+        return brushes;
     }
 
     @Override
